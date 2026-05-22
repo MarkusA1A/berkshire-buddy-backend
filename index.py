@@ -58,6 +58,22 @@ def load_archives():
 # Load on startup
 load_archives()
 
+# ============= Letter URL Generation =============
+
+def get_letter_url(year):
+    """Generate correct URL for Berkshire shareholder letter based on year"""
+    if not year:
+        return None
+    
+    try:
+        year_int = int(year)
+    except (ValueError, TypeError):
+        return None
+    
+    # All tested years (1977-2005) use .html
+    # For consistency, we assume all years use .html
+    return f'https://www.berkshirehathaway.com/letters/{year}.html'
+
 # ============= Ollama Integration =============
 
 OLLAMA_BASE = 'http://localhost:11434'

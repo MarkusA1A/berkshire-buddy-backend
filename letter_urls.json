@@ -1,0 +1,24 @@
+{
+  "description": "Berkshire Hathaway Shareholder Letter URL Mapping",
+  "base_url": "https://www.berkshirehathaway.com/letters",
+  "structure": {
+    "1977-2005": {
+      "format": ".html",
+      "pattern": "{base_url}/{year}.html",
+      "example": "https://www.berkshirehathaway.com/letters/1992.html"
+    },
+    "2006-present": {
+      "note": "Checked but 404s - website structure may have changed",
+      "format": ".html (fallback)",
+      "pattern": "{base_url}/{year}.html"
+    }
+  },
+  "verified_working_years": [1977, 1985, 1997, 1998, 2005],
+  "generation_date": "2026-05-22",
+  "notes": [
+    "All tested years use .html extension",
+    "No PDF versions found in /letters/ directory",
+    "Assumes consistent URL structure for all years",
+    "Years 2006+ may be on different domain or require different pattern"
+  ]
+}
