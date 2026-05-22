@@ -79,9 +79,9 @@ def search_archives(query, limit=3):
                 if i >= 3:
                     break
                 pos = match.start()
-                # Extract context
-                start = max(0, pos - 200)
-                end = min(len(content), pos + 200)
+                # Extract context (larger window for better readability)
+                start = max(0, pos - 300)
+                end = min(len(content), pos + 500)
                 context = content[start:end].strip()
                 
                 matches.append({
@@ -104,9 +104,9 @@ def search_archives(query, limit=3):
             if i >= 3:
                 break
             pos = match.start()
-            # Extract context
-            start = max(0, pos - 200)
-            end = min(len(content), pos + 200)
+            # Extract context (larger window for better readability)
+            start = max(0, pos - 300)
+            end = min(len(content), pos + 500)
             context = content[start:end].strip()
             
             # Try to extract year
