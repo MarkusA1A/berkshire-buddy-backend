@@ -244,10 +244,12 @@ def search_archives(query, limit=3):
             seen.add(r['text'])
             unique_results.append(r)
     
-    # Boost meetings in the ranking (they're rarer but often more relevant)
+    # Prioritize meetings over letters (they're more direct Q&A from Buffett/Munger)
     for r in unique_results:
         if 'Meeting' in r['source']:
-            r['relevance'] += 0.3  # Boost meetings by 0.3
+            r['relevance'] = 1.5  # Meetings get higher priority than letters (1.0)
+        else:
+            r['relevance'] = 0.8  # Reduce letter priority slightly
     
     # Sort by relevance, then by match position
     unique_results = sorted(
