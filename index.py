@@ -380,16 +380,28 @@ def application(environ, start_response):
         
         synthesis = synthesize_with_ollama(question, citations)
         
-        # Add links to original Berkshire letters
+        # Add links + translate citations to German
         citations_with_links = []
         for c in citations:
+            # Add link to original letter
             if c.get('year') and 'Letter' in c.get('source', ''):
                 year = c['year']
                 c['letter_url'] = f'https://www.berkshirehathaway.com/letters/{year}.html'
+            
+            # Translate citation text to German
+            if c.get('text'):
+                german_text = translate_to_german(c['text'])
+                if german_text:
+                    c['text_de'] = german_text  # Add German translation
+            
             citations_with_links.append(c)
+        
+        # Translate question to German for display
+        question_de = translate_to_german(question) if question else None
         
         response = {
             "question": question,
+            "question_de": question_de,
             "synthesis": synthesis,
             "citations": citations_with_links,
             "has_answer": synthesis is not None
