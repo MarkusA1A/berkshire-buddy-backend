@@ -58,12 +58,38 @@ load_archives()
 
 # ============= Search Logic =============
 
+def extract_context_smart(text, match_pos, context_before=400, context_after=600):
+    """Extract context, ensuring complete sentences"""
+    # Get raw context window
+    start = max(0, match_pos - context_before)
+    end = min(len(text), match_pos + context_after)
+    
+    # Find sentence boundaries (. ! ?)
+    # Move start to next sentence start
+    sentence_markers = ['.', '!', '?']
+    while start > 0 and text[start-1] not in sentence_markers:
+        start -= 1
+    # Skip the marker itself
+    while start < len(text) and text[start] in sentence_markers + [' ', '\n']:
+        start += 1
+    
+    # Move end to sentence end
+    while end < len(text) and text[end] not in sentence_markers:
+        end += 1
+    # Include the marker
+    if end < len(text) and text[end] in sentence_markers:
+        end += 1
+    
+    context = text[start:end].strip()
+    return context if context else text[max(0, match_pos-200):min(len(text), match_pos+200)].strip()
+
 def search_archives(query, limit=3):
     """Search in both archives"""
     results = []
     query_lower = query.lower().strip('?!.,;:')
     
-    # Split query into keywords and search for any of them
+    # Try phrase search first, then keyword fallback
+    phrase = query_lower
     keywords = [w for w in query_lower.split() if len(w) > 2]
     if not keywords:
         keywords = [query_lower]
@@ -72,25 +98,38 @@ def search_archives(query, limit=3):
     for year, content in archives.get("letters", {}).items():
         content_lower = content.lower()
         
-        # Find first 5 matches per year for each keyword
+        # Try phrase first
         matches = []
-        for keyword in keywords:
-            for i, match in enumerate(re.finditer(re.escape(keyword), content_lower)):
-                if i >= 3:
-                    break
-                pos = match.start()
-                # Extract context (larger window for better readability)
-                start = max(0, pos - 300)
-                end = min(len(content), pos + 500)
-                context = content[start:end].strip()
-                
-                matches.append({
-                    "text": context,
-                    "source": f"Shareholder Letter {year}",
-                    "year": year,
-                    "relevance": 1.0,
-                    "match_pos": pos
-                })
+        phrase_found = False
+        for i, match in enumerate(re.finditer(re.escape(phrase), content_lower)):
+            if i >= 2:  # Limit phrase matches
+                break
+            pos = match.start()
+            context = extract_context_smart(content, pos)
+            matches.append({
+                "text": context,
+                "source": f"Shareholder Letter {year}",
+                "year": year,
+                "relevance": 1.5,  # Boost phrase matches
+                "match_pos": pos
+            })
+            phrase_found = True
+        
+        # If phrase didn't find much, try keywords
+        if not phrase_found:
+            for keyword in keywords:
+                for i, match in enumerate(re.finditer(re.escape(keyword), content_lower)):
+                    if i >= 2:
+                        break
+                    pos = match.start()
+                    context = extract_context_smart(content, pos)
+                    matches.append({
+                        "text": context,
+                        "source": f"Shareholder Letter {year}",
+                        "year": year,
+                        "relevance": 1.0,
+                        "match_pos": pos
+                    })
         
         results.extend(matches)
     
@@ -99,27 +138,39 @@ def search_archives(query, limit=3):
     content_lower = content.lower()
     
     matches = []
-    for keyword in keywords:
-        for i, match in enumerate(re.finditer(re.escape(keyword), content_lower)):
-            if i >= 3:
-                break
-            pos = match.start()
-            # Extract context (larger window for better readability)
-            start = max(0, pos - 300)
-            end = min(len(content), pos + 500)
-            context = content[start:end].strip()
-            
-            # Try to extract year
-            year_match = re.search(r'\b(19|20)\d{2}\b', context)
-            year = year_match.group(0) if year_match else None
-            
-            matches.append({
-                "text": context,
-                "source": "Shareholder Meeting",
-                "year": year,
-                "relevance": 0.95,
-                "match_pos": pos
-            })
+    # Try phrase first
+    for i, match in enumerate(re.finditer(re.escape(phrase), content_lower)):
+        if i >= 2:
+            break
+        pos = match.start()
+        context = extract_context_smart(content, pos)
+        year_match = re.search(r'\b(19|20)\d{2}\b', context)
+        year = year_match.group(0) if year_match else None
+        matches.append({
+            "text": context,
+            "source": "Shareholder Meeting",
+            "year": year,
+            "relevance": 1.45,
+            "match_pos": pos
+        })
+    
+    # Keyword fallback
+    if not matches:
+        for keyword in keywords:
+            for i, match in enumerate(re.finditer(re.escape(keyword), content_lower)):
+                if i >= 2:
+                    break
+                pos = match.start()
+                context = extract_context_smart(content, pos)
+                year_match = re.search(r'\b(19|20)\d{2}\b', context)
+                year = year_match.group(0) if year_match else None
+                matches.append({
+                    "text": context,
+                    "source": "Shareholder Meeting",
+                    "year": year,
+                    "relevance": 0.95,
+                    "match_pos": pos
+                })
     
     results.extend(matches)
     
