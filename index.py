@@ -63,6 +63,28 @@ load_archives()
 OLLAMA_BASE = 'http://localhost:11434'
 OLLAMA_MODEL = 'mistral:latest'
 
+def translate_to_german(text):
+    """Translate text to German using Ollama"""
+    try:
+        request_data = json.dumps({
+            'model': OLLAMA_MODEL,
+            'prompt': f'Übersetze diesen englischen Text kurz ins Deutsche. Nur Übersetzung:\n\n{text}',
+            'stream': False,
+            'temperature': 0.5
+        }).encode('utf-8')
+        
+        req = urllib.request.Request(
+            f'{OLLAMA_BASE}/api/generate',
+            data=request_data,
+            headers={'Content-Type': 'application/json'}
+        )
+        
+        with urllib.request.urlopen(req, timeout=20) as response:
+            data = json.loads(response.read().decode())
+            return data.get('response', '').strip()
+    except:
+        return None
+
 def synthesize_with_ollama(question, citations):
     """Call Ollama locally to synthesize an intelligent answer"""
     if not citations:
@@ -358,9 +380,18 @@ def application(environ, start_response):
         
         synthesis = synthesize_with_ollama(question, citations)
         
+        # Add links to original Berkshire letters
+        citations_with_links = []
+        for c in citations:
+            if c.get('year') and 'Letter' in c.get('source', ''):
+                year = c['year']
+                c['letter_url'] = f'https://www.berkshirehathaway.com/letters/{year}.html'
+            citations_with_links.append(c)
+        
         response = {
             "question": question,
             "synthesis": synthesis,
+            "citations": citations_with_links,
             "has_answer": synthesis is not None
         }
         
