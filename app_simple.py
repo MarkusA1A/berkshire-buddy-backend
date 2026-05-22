@@ -10,6 +10,7 @@ import re
 import urllib.parse
 from pathlib import Path
 import sys
+import os
 
 # ============= Data Loading =============
 
@@ -323,16 +324,18 @@ class BerkshireHandler(BaseHTTPRequestHandler):
 # ============= Main =============
 
 if __name__ == "__main__":
-    PORT = 8000
+    import os
+    PORT = int(os.getenv("PORT", 8000))
+    HOST = "0.0.0.0"
     
     print("\n" + "="*50)
     print("Berkshire Buddy API Starting...")
     print("="*50)
     
-    server = HTTPServer(("127.0.0.1", PORT), BerkshireHandler)
-    print(f"\n✅ Server running at http://localhost:{PORT}")
-    print(f"📊 Stats: http://localhost:{PORT}/stats")
-    print(f"🔍 Test: http://localhost:{PORT}/search?q=value+investing")
+    server = HTTPServer((HOST, PORT), BerkshireHandler)
+    print(f"\n✅ Server running at http://{HOST}:{PORT}")
+    print(f"📊 Stats: http://{HOST}:{PORT}/stats")
+    print(f"🔍 Test: http://{HOST}:{PORT}/search?q=value+investing")
     print("="*50 + "\n")
     
     try:
