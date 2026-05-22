@@ -7,6 +7,7 @@ from http.server import BaseHTTPRequestHandler
 import json
 import re
 from pathlib import Path
+from urllib.parse import unquote
 
 # ============= Data Loading =============
 
@@ -143,7 +144,7 @@ def application(environ, start_response):
         for pair in query_string.split('&'):
             if '=' in pair:
                 k, v = pair.split('=', 1)
-                params[k] = v.replace('+', ' ')
+                params[k] = unquote(v.replace('+', ' '))
     
     # CORS headers
     headers = [
@@ -200,8 +201,11 @@ def application(environ, start_response):
         return [json.dumps(response).encode('utf-8')]
     
     elif path == '/search':
-        query = params.get('q', '')
+        query = params.get('q', '').strip()
         limit = int(params.get('limit', 3))
+        
+        print(f"DEBUG: Query = '{query}'")
+        print(f"DEBUG: Query length = {len(query)}")
         
         if not query or len(query) < 2:
             start_response('400 Bad Request', headers)
