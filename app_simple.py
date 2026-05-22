@@ -8,6 +8,8 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 import json
 import re
 import urllib.parse
+import urllib.request
+import urllib.error
 from pathlib import Path
 import sys
 import os
@@ -98,6 +100,63 @@ def load_letter_urls():
         print(f"⚠ letter_urls.json not found at {url_config_path}")
 
 load_letter_urls()
+
+# ============= OpenAI Integration =============
+
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+
+def synthesize_with_openai(question, citations):
+    """Use OpenAI to synthesize answer from citations"""
+    if not OPENAI_API_KEY:
+        return None
+    
+    # Format citations for prompt
+    citations_parts = []
+    for c in citations[:3]:
+        year_str = f" ({c.get('year')})" if c.get('year') else ""
+        citations_parts.append(f"Source: {c['source']}{year_str}\nContent: {c['text'][:500]}")
+    citations_text = "\n\n".join(citations_parts)
+    
+    prompt = f"""You are Warren Buffett's investment coach. Using the following citations from Berkshire Hathaway's letters and meetings, provide a concise, insightful answer to the investor's question.
+
+Question: {question}
+
+Relevant Sources:
+{citations_text}
+
+Provide a thoughtful, practical answer in German. Keep it under 200 words. Reference the sources directly."""
+    
+    try:
+        request_data = json.dumps({
+            "model": "gpt-3.5-turbo",
+            "messages": [
+                {"role": "system", "content": "You are Warren Buffett's investment coach."},
+                {"role": "user", "content": prompt}
+            ],
+            "max_tokens": 250,
+            "temperature": 0.7
+        }).encode('utf-8')
+        
+        req = urllib.request.Request(
+            'https://api.openai.com/v1/chat/completions',
+            data=request_data,
+            headers={
+                'Authorization': f'Bearer {OPENAI_API_KEY}',
+                'Content-Type': 'application/json',
+                'User-Agent': 'Berkshire-Buddy/1.0'
+            },
+            method='POST'
+        )
+        
+        response = urllib.request.urlopen(req, timeout=15)
+        data = json.loads(response.read().decode('utf-8'))
+        
+        if 'choices' in data and len(data['choices']) > 0:
+            return data['choices'][0]['message']['content']
+    except Exception as e:
+        print(f"OpenAI synthesis error: {e}")
+    
+    return None
 
 def get_letter_url(year):
     """Get correct URL for a Berkshire letter by year"""
@@ -313,6 +372,60 @@ class BerkshireHandler(BaseHTTPRequestHandler):
             }
             self.wfile.write(json.dumps(response, ensure_ascii=False).encode("utf-8"))
         
+        else:
+            self.send_response(404)
+            self.send_header("Content-Type", "application/json")
+            for k, v in cors_headers.items():
+                self.send_header(k, v)
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": "Not found"}).encode())
+    
+    def do_POST(self):
+        """Handle POST requests"""
+        parsed_url = urllib.parse.urlparse(self.path)
+        path = parsed_url.path
+        
+        cors_headers = {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type"
+        }
+        
+        if path == "/synthesis":
+            # Read request body
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length).decode('utf-8')
+            
+            try:
+                data = json.loads(body)
+                question = data.get('question', '')
+                citations = data.get('citations', [])
+                
+                if not question or not citations:
+                    raise ValueError("Missing question or citations")
+                
+                # Get synthesis from OpenAI
+                synthesis = synthesize_with_openai(question, citations)
+                
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                for k, v in cors_headers.items():
+                    self.send_header(k, v)
+                self.end_headers()
+                
+                response = {
+                    "synthesis": synthesis if synthesis else "Unable to synthesize at this time",
+                    "status": "ok" if synthesis else "no_synthesis"
+                }
+                self.wfile.write(json.dumps(response).encode())
+                
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                for k, v in cors_headers.items():
+                    self.send_header(k, v)
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode())
         else:
             self.send_response(404)
             self.send_header("Content-Type", "application/json")
