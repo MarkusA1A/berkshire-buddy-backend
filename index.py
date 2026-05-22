@@ -59,24 +59,41 @@ def load_archives():
 load_archives()
 
 # ============= Letter URL Generation =============
+# Note: letter_url_config and LETTER_URL_MAPPING are loaded at module level above
+
+# Load letter URL mapping
+try:
+    with open('letter_urls.json', 'r') as f:
+        letter_url_config = json.load(f)
+        LETTER_URL_MAPPING = letter_url_config.get('mapping', {})
+except:
+    LETTER_URL_MAPPING = {}
 
 def get_letter_url(year):
-    """Generate correct URL for Berkshire shareholder letter based on year"""
+    """Get correct URL for Berkshire shareholder letter based on year
+    Uses mapping from letter_urls.json for accurate URLs
+    """
     if not year:
         return None
     
+    year_str = str(year)
+    
+    # Check mapping first (most accurate)
+    if year_str in LETTER_URL_MAPPING:
+        return LETTER_URL_MAPPING[year_str]
+    
+    # Fallback patterns for unmapped years
     try:
-        year_int = int(year)
+        year_int = int(year_str)
     except (ValueError, TypeError):
         return None
     
-    # URL structure changes by year
-    if year_int <= 2005:
-        # 1977-2005: {year}.html
+    # Fallback for early years (1977-1996, not in mapping)
+    if year_int < 1997:
         return f'https://www.berkshirehathaway.com/letters/{year}.html'
-    else:
-        # 2006+: {year}ltr.pdf
-        return f'https://www.berkshirehathaway.com/letters/{year}ltr.pdf'
+    
+    # No fallback for unmapped years after 1997
+    return None
 
 # ============= Ollama Integration =============
 
