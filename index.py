@@ -414,18 +414,23 @@ def application(environ, start_response):
         query = params.get('q', '').strip()
         limit = int(params.get('limit', 3))
         
-        print(f"DEBUG: Query = '{query}'")
-        print(f"DEBUG: Query length = {len(query)}")
-        
         if not query or len(query) < 2:
             start_response('400 Bad Request', headers)
             return [json.dumps({"error": "Query too short"}).encode('utf-8')]
         
         results = search_archives(query, limit=limit)
         
+        # Add links to original Berkshire letters
+        results_with_links = []
+        for r in results:
+            if r.get('year') and 'Letter' in r.get('source', ''):
+                year = r['year']
+                r['letter_url'] = f'https://www.berkshirehathaway.com/letters/{year}.html'
+            results_with_links.append(r)
+        
         response = {
             "query": query,
-            "citations": results,
+            "citations": results_with_links,
             "message": f"Found {len(results)} citations" if results else "No results found"
         }
         start_response('200 OK', headers)
