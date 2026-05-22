@@ -128,29 +128,38 @@ def extract_context(text, match_pos, context_chars=200):
     end = min(len(text), match_pos + context_chars)
     return text[start:end].strip()
 
+def extract_keywords(query):
+    """Extract important keywords from query (skip common words)"""
+    stopwords = {'what', 'shall', 'should', 'do', 'with', 'i', 'a', 'the', 'is', 'are', 'to', 'of', 'in', 'on', 'at', 'be', 'have', 'has', 'had'}
+    words = query.lower().split()
+    keywords = [w for w in words if len(w) > 2 and w not in stopwords]
+    return keywords if keywords else [query.lower()]  # Fallback to full query if no keywords
+
 def search_archives(query, limit=3):
-    """Search in both archives"""
+    """Search in both archives by keywords"""
     results = []
     query_lower = query.lower()
+    keywords = extract_keywords(query)
     
     # Search letters
     for year, content in archives.get("letters", {}).items():
         content_lower = content.lower()
         
-        # Find first 5 matches per year
+        # Find matches for ANY keyword
         matches = []
-        for i, match in enumerate(re.finditer(re.escape(query_lower), content_lower)):
-            if i >= 5:
-                break
-            pos = match.start()
-            context = extract_context(content, pos)
-            matches.append({
-                "text": context,
-                "source": f"Shareholder Letter {year}",
-                "year": year,
-                "relevance": 1.0,
-                "match_pos": pos
-            })
+        for keyword in keywords:
+            for i, match in enumerate(re.finditer(re.escape(keyword), content_lower)):
+                if i >= 3:  # Max 3 matches per keyword per year
+                    break
+                pos = match.start()
+                context = extract_context(content, pos)
+                matches.append({
+                    "text": context,
+                    "source": f"Shareholder Letter {year}",
+                    "year": year,
+                    "relevance": 1.0,
+                    "match_pos": pos
+                })
         
         results.extend(matches)
     
@@ -159,23 +168,24 @@ def search_archives(query, limit=3):
     content_lower = content.lower()
     
     matches = []
-    for i, match in enumerate(re.finditer(re.escape(query_lower), content_lower)):
-        if i >= 5:
-            break
-        pos = match.start()
-        context = extract_context(content, pos)
-        
-        # Try to extract year
-        year_match = re.search(r'\b(19|20)\d{2}\b', context)
-        year = year_match.group(0) if year_match else None
-        
-        matches.append({
-            "text": context,
-            "source": "Shareholder Meeting",
-            "year": year,
-            "relevance": 0.95,
-            "match_pos": pos
-        })
+    for keyword in keywords:
+        for i, match in enumerate(re.finditer(re.escape(keyword), content_lower)):
+            if i >= 3:  # Max 3 matches per keyword
+                break
+            pos = match.start()
+            context = extract_context(content, pos)
+            
+            # Try to extract year
+            year_match = re.search(r'\b(19|20)\d{2}\b', context)
+            year = year_match.group(0) if year_match else None
+            
+            matches.append({
+                "text": context,
+                "source": "Shareholder Meeting",
+                "year": year,
+                "relevance": 0.95,
+                "match_pos": pos
+            })
     
     results.extend(matches)
     
