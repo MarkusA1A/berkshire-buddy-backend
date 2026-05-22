@@ -19,13 +19,13 @@ BASE_DIR = Path(__file__).parent
 
 ARCHIVE_PATHS = {
     "letters": BASE_DIR / "data" / "berkshire-letters-archive.json",
-    "meetings": BASE_DIR / "data" / "berkshire-shareholder-meetings.txt",
+    "meetings": BASE_DIR / "data" / "berkshire-shareholder-meetings.json",
 }
 
 # Fallback to absolute path if relative doesn't exist (for development)
 FALLBACK_PATHS = {
     "letters": Path("/Users/macmini/.openclaw/workspace/memory/berkshire-letters-archive.json"),
-    "meetings": Path("/Users/macmini/.openclaw/workspace/memory/berkshire-shareholder-meetings.txt"),
+    "meetings": Path("/Users/macmini/.openclaw/workspace/memory/berkshire-shareholder-meetings.json"),
 }
 
 archives = {}
@@ -52,12 +52,14 @@ def load_archives():
         print(f"✗ Letters not found at {letter_path}")
         archives["letters"] = {}
     
-    # Load Shareholder Meetings (TXT)
+    # Load Shareholder Meetings (JSON)
     if meeting_path.exists():
         try:
             with open(meeting_path, "r", encoding="utf-8") as f:
-                archives["meetings"] = f.read()
-            print(f"✓ Loaded shareholder meetings ({len(archives['meetings']) // 1000}KB)")
+                meeting_data = json.load(f)
+                # Convert JSON dict to combined text for searching
+                archives["meetings"] = json.dumps(meeting_data, ensure_ascii=False)
+                print(f"✓ Loaded {len(meeting_data)} shareholder meetings ({len(archives['meetings']) // 1024}KB)")
             print(f"  (from {meeting_path})")
         except Exception as e:
             print(f"✗ Error loading meetings: {e}")
