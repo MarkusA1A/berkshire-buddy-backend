@@ -244,6 +244,11 @@ def search_archives(query, limit=3):
             seen.add(r['text'])
             unique_results.append(r)
     
+    # Boost meetings in the ranking (they're rarer but often more relevant)
+    for r in unique_results:
+        if 'Meeting' in r['source']:
+            r['relevance'] += 0.3  # Boost meetings by 0.3
+    
     # Sort by relevance, then by match position
     unique_results = sorted(
         unique_results,
