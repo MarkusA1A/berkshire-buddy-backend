@@ -70,9 +70,13 @@ def get_letter_url(year):
     except (ValueError, TypeError):
         return None
     
-    # All tested years (1977-2005) use .html
-    # For consistency, we assume all years use .html
-    return f'https://www.berkshirehathaway.com/letters/{year}.html'
+    # URL structure changes by year
+    if year_int <= 2005:
+        # 1977-2005: {year}.html
+        return f'https://www.berkshirehathaway.com/letters/{year}.html'
+    else:
+        # 2006+: {year}ltr.pdf
+        return f'https://www.berkshirehathaway.com/letters/{year}ltr.pdf'
 
 # ============= Ollama Integration =============
 

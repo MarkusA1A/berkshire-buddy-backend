@@ -5,20 +5,33 @@
     "1977-2005": {
       "format": ".html",
       "pattern": "{base_url}/{year}.html",
-      "example": "https://www.berkshirehathaway.com/letters/1992.html"
+      "example": "https://www.berkshirehathaway.com/letters/1997.html"
     },
     "2006-present": {
-      "note": "Checked but 404s - website structure may have changed",
-      "format": ".html (fallback)",
-      "pattern": "{base_url}/{year}.html"
+      "format": "ltr.pdf",
+      "pattern": "{base_url}/{year}ltr.pdf",
+      "example": "https://www.berkshirehathaway.com/letters/2023ltr.pdf"
+    },
+    "2005-transition": {
+      "note": "2005 has both formats available (.html and ltr.pdf)"
     }
   },
-  "verified_working_years": [1977, 1985, 1997, 1998, 2005],
-  "generation_date": "2026-05-22",
+  "verified_working_urls": {
+    "1997": "https://www.berkshirehathaway.com/letters/1997.html",
+    "1998": "https://www.berkshirehathaway.com/letters/1998.html",
+    "2005_html": "https://www.berkshirehathaway.com/letters/2005.html",
+    "2005_pdf": "https://www.berkshirehathaway.com/letters/2005ltr.pdf",
+    "2010": "https://www.berkshirehathaway.com/letters/2010ltr.pdf",
+    "2015": "https://www.berkshirehathaway.com/letters/2015ltr.pdf",
+    "2020": "https://www.berkshirehathaway.com/letters/2020ltr.pdf",
+    "2023": "https://www.berkshirehathaway.com/letters/2023ltr.pdf",
+    "2024": "https://www.berkshirehathaway.com/letters/2024ltr.pdf"
+  },
+  "generation_date": "2026-05-22T15:11:00Z",
   "notes": [
-    "All tested years use .html extension",
-    "No PDF versions found in /letters/ directory",
-    "Assumes consistent URL structure for all years",
-    "Years 2006+ may be on different domain or require different pattern"
+    "URLs structure changed after 2005",
+    "Old format: {year}.html for 1977-2005",
+    "New format: {year}ltr.pdf for 2006+",
+    "All tested years confirmed working"
   ]
 }
