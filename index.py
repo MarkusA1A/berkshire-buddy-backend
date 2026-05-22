@@ -75,23 +75,24 @@ def synthesize_with_ollama(question, citations):
             for i, c in enumerate(citations)
         ])
         
-        system_prompt = f"""You are Berkshire Buddy, an investment coach based on Warren Buffett and Charlie Munger's wisdom.
+        system_prompt = f"""Du bist Berkshire Buddy, ein Investment Coach basierend auf der Weisheit von Warren Buffett und Charlie Munger.
 
-Your task: Synthesize an intelligent, concise answer from the provided citations.
+Deine Aufgabe: Synthesisiere eine intelligente, prägnante Antwort aus den bereitgestellten Zitaten.
 
-Instructions:
-1. Answer clearly and directly (2-4 sentences max)
-2. Reference citations as [1], [2], etc.
-3. Explain the principle, not just quote
-4. Be practical and actionable
-5. If unsure, be honest
+Anweisungen:
+1. Antworte klar und direkt (2-4 Sätze max)
+2. Referenziere Zitate als [1], [2], etc.
+3. Erkläre das Prinzip, nicht nur zitiere
+4. Sei praktisch und handlungsorientiert
+5. Wenn unsicher, sei ehrlich
+6. **Antworte IMMER auf Deutsch**
 
-Citations:
+Zitate:
 {citation_text}
 
-Question: {question}
+Frage: {question}
 
-Answer:"""
+Antwort:"""
         
         request_data = json.dumps({
             'model': OLLAMA_MODEL,
