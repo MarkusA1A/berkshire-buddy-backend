@@ -61,30 +61,36 @@ load_archives()
 def search_archives(query, limit=3):
     """Search in both archives"""
     results = []
-    query_lower = query.lower()
+    query_lower = query.lower().strip('?!.,;:')
+    
+    # Split query into keywords and search for any of them
+    keywords = [w for w in query_lower.split() if len(w) > 2]
+    if not keywords:
+        keywords = [query_lower]
     
     # Search letters
     for year, content in archives.get("letters", {}).items():
         content_lower = content.lower()
         
-        # Find first 5 matches per year
+        # Find first 5 matches per year for each keyword
         matches = []
-        for i, match in enumerate(re.finditer(re.escape(query_lower), content_lower)):
-            if i >= 5:
-                break
-            pos = match.start()
-            # Extract context
-            start = max(0, pos - 200)
-            end = min(len(content), pos + 200)
-            context = content[start:end].strip()
-            
-            matches.append({
-                "text": context,
-                "source": f"Shareholder Letter {year}",
-                "year": year,
-                "relevance": 1.0,
-                "match_pos": pos
-            })
+        for keyword in keywords:
+            for i, match in enumerate(re.finditer(re.escape(keyword), content_lower)):
+                if i >= 3:
+                    break
+                pos = match.start()
+                # Extract context
+                start = max(0, pos - 200)
+                end = min(len(content), pos + 200)
+                context = content[start:end].strip()
+                
+                matches.append({
+                    "text": context,
+                    "source": f"Shareholder Letter {year}",
+                    "year": year,
+                    "relevance": 1.0,
+                    "match_pos": pos
+                })
         
         results.extend(matches)
     
@@ -93,41 +99,50 @@ def search_archives(query, limit=3):
     content_lower = content.lower()
     
     matches = []
-    for i, match in enumerate(re.finditer(re.escape(query_lower), content_lower)):
-        if i >= 5:
-            break
-        pos = match.start()
-        # Extract context
-        start = max(0, pos - 200)
-        end = min(len(content), pos + 200)
-        context = content[start:end].strip()
-        
-        # Try to extract year
-        year_match = re.search(r'\b(19|20)\d{2}\b', context)
-        year = year_match.group(0) if year_match else None
-        
-        matches.append({
-            "text": context,
-            "source": "Shareholder Meeting",
-            "year": year,
-            "relevance": 0.95,
-            "match_pos": pos
-        })
+    for keyword in keywords:
+        for i, match in enumerate(re.finditer(re.escape(keyword), content_lower)):
+            if i >= 3:
+                break
+            pos = match.start()
+            # Extract context
+            start = max(0, pos - 200)
+            end = min(len(content), pos + 200)
+            context = content[start:end].strip()
+            
+            # Try to extract year
+            year_match = re.search(r'\b(19|20)\d{2}\b', context)
+            year = year_match.group(0) if year_match else None
+            
+            matches.append({
+                "text": context,
+                "source": "Shareholder Meeting",
+                "year": year,
+                "relevance": 0.95,
+                "match_pos": pos
+            })
     
     results.extend(matches)
     
+    # Deduplicate by text
+    seen = set()
+    unique_results = []
+    for r in results:
+        if r['text'] not in seen:
+            seen.add(r['text'])
+            unique_results.append(r)
+    
     # Sort by relevance, then by match position
-    results = sorted(
-        results,
+    unique_results = sorted(
+        unique_results,
         key=lambda x: (x["relevance"], -x["match_pos"]),
         reverse=True
     )[:limit]
     
     # Clean up internal fields
-    for r in results:
+    for r in unique_results:
         del r["match_pos"]
     
-    return results
+    return unique_results
 
 # ============= WSGI Application =============
 
