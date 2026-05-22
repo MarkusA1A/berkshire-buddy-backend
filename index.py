@@ -8,6 +8,8 @@ import json
 import re
 from pathlib import Path
 from urllib.parse import unquote
+import urllib.request
+import urllib.error
 
 # ============= Data Loading =============
 
@@ -55,6 +57,65 @@ def load_archives():
 
 # Load on startup
 load_archives()
+
+# ============= Ollama Integration =============
+
+OLLAMA_BASE = 'http://localhost:11434'
+OLLAMA_MODEL = 'mistral:latest'
+
+def synthesize_with_ollama(question, citations):
+    """Call Ollama locally to synthesize an intelligent answer"""
+    if not citations:
+        return None
+    
+    try:
+        # Format citations for context
+        citation_text = '\n\n'.join([
+            f"[{i+1}] \"{c['text']}\" ({c['source']}, {c.get('year', 'N/A')})"
+            for i, c in enumerate(citations)
+        ])
+        
+        system_prompt = f"""You are Berkshire Buddy, an investment coach based on Warren Buffett and Charlie Munger's wisdom.
+
+Your task: Synthesize an intelligent, concise answer from the provided citations.
+
+Instructions:
+1. Answer clearly and directly (2-4 sentences max)
+2. Reference citations as [1], [2], etc.
+3. Explain the principle, not just quote
+4. Be practical and actionable
+5. If unsure, be honest
+
+Citations:
+{citation_text}
+
+Question: {question}
+
+Answer:"""
+        
+        request_data = json.dumps({
+            'model': OLLAMA_MODEL,
+            'prompt': system_prompt,
+            'stream': False,
+            'temperature': 0.7
+        }).encode('utf-8')
+        
+        req = urllib.request.Request(
+            f'{OLLAMA_BASE}/api/generate',
+            data=request_data,
+            headers={'Content-Type': 'application/json'}
+        )
+        
+        with urllib.request.urlopen(req, timeout=30) as response:
+            data = json.loads(response.read().decode())
+            return data.get('response', '').strip()
+    
+    except urllib.error.URLError:
+        print("⚠ Ollama not available (localhost:11434)")
+        return None
+    except Exception as e:
+        print(f"⚠ Ollama error: {e}")
+        return None
 
 # ============= Search Logic =============
 
@@ -265,6 +326,38 @@ def application(environ, start_response):
         }
         start_response('200 OK', headers)
         return [json.dumps(response).encode('utf-8')]
+    
+    elif path == '/synthesis':
+        """POST endpoint for AI synthesis of citations"""
+        if method != 'POST':
+            start_response('405 Method Not Allowed', headers)
+            return [json.dumps({"error": "POST required"}).encode('utf-8')]
+        
+        try:
+            content_length = int(environ.get('CONTENT_LENGTH', 0))
+            body = environ['wsgi.input'].read(content_length).decode('utf-8')
+            request_data = json.loads(body)
+        except:
+            start_response('400 Bad Request', headers)
+            return [json.dumps({"error": "Invalid JSON"}).encode('utf-8')]
+        
+        question = request_data.get('question', '')
+        citations = request_data.get('citations', [])
+        
+        if not question or not citations:
+            start_response('400 Bad Request', headers)
+            return [json.dumps({"error": "Need question and citations"}).encode('utf-8')]
+        
+        synthesis = synthesize_with_ollama(question, citations)
+        
+        response = {
+            "question": question,
+            "synthesis": synthesis,
+            "has_answer": synthesis is not None
+        }
+        
+        start_response('200 OK', headers)
+        return [json.dumps(response, ensure_ascii=False).encode('utf-8')]
     
     elif path == '/search':
         query = params.get('q', '').strip()
